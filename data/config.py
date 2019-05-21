@@ -28,8 +28,8 @@ _C.apply_distort = True
 _C.apply_expand = False
 _C.img_mean = np.array([104., 117., 123.])[:, np.newaxis, np.newaxis].astype(
     'float32')
-_C.resize_width = 224
-_C.resize_height = 224
+_C.resize_width = 640
+_C.resize_height = 640
 _C.scale = 1 / 127.0
 _C.anchor_sampling = True
 _C.filter_min_face = True
@@ -41,7 +41,7 @@ _C.EPOCHES = 100
 
 # anchor config
 _C.FEATURE_MAPS = [160, 80, 40, 20, 10, 5]
-_C.INPUT_SIZE = 224
+_C.INPUT_SIZE = 640
 _C.STEPS = [4, 8, 16, 32, 64, 128]
 _C.ANCHOR_SIZES1 = [8, 16, 32, 64, 128, 256]
 _C.ANCHOR_SIZES2 = [16, 32, 64, 128, 256, 512]
@@ -60,7 +60,7 @@ _C.NEG_POS_RATIOS = 3
 _C.NUM_CLASSES = 2
 
 # dataset config
-_C.HOME = '/home/lijun/data/'
+_C.HOME = 'C:\\Users\v_zhangkerui\\Desktop'
 
 
 # face config
@@ -69,6 +69,7 @@ _C.FACE.TRAIN_FILE = './data/face_train.txt'
 _C.FACE.VAL_FILE = './data/face_val.txt'
 _C.FACE.FDDB_DIR = '/home/lijun/data/FDDB'
 _C.FACE.WIDER_DIR = '/home/lijun/data/WIDER'
+_C.FACE.XDF_DIR = '/home/lijun/data/WIDER'
 _C.FACE.AFW_DIR = '/home/lijun/data/AFW'
 _C.FACE.PASCAL_DIR = '/home/lijun/data/PASCAL_FACE'
 _C.FACE.OVERLAP_THRESH = 0.35

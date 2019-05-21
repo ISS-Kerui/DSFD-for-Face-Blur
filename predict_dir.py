@@ -57,6 +57,19 @@ if use_cuda:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 else:
     torch.set_default_tensor_type('torch.FloatTensor')
+def find_no_match_box(pre_bbox,now_bbox,threshold=15):
+    add_bbox = []
+    if len(pre_bbox) > len(now_bbox):
+        for A_box in pre_bbox:
+            min_dis = 1000
+            for B_box in now_bbox:
+                cur_dis = np.sqrt(np.sum(np.square(A_box[0::1]-B_box[0::1])))
+                if cur_dis<min_dis:
+                    min_dis = cur_dis
+            if min_dis > threshold:
+                add_bbox.append(A_box)
+    return add_bbox
+
 def generate_mask(img_height,img_width,radius,center_x,center_y):
     y,x=np.ogrid[0:img_height,0:img_width]
     # circle mask
@@ -65,8 +78,7 @@ def generate_mask(img_height,img_width,radius,center_x,center_y):
     scale = 5/radius
     mask = 5*((-x+center_x)*scale)**2 - 6*np.abs((-x+center_x)*scale)*((-y+center_y)*scale) + 5*((-y+center_y)*scale)**2 < 128
     return mask
-
-def detect(net, im, thresh):
+def detect(net, im, thresh,pre_bbox):
     #img = Image.open(img_path)
     
     img = Image.fromarray(cv2.cvtColor(im,cv2.COLOR_BGR2RGB))  
@@ -99,32 +111,35 @@ def detect(net, im, thresh):
     mask_img = np.ones(im.shape,np.int8)
     kernel_size = 15
     blur_img = cv2.blur(im,(kernel_size,kernel_size))
+    
+    now_bbox = []
     for i in range(detections.size(1)):
         j = 0
         while detections[0, i, j, 0] >= thresh:
             score = detections[0, i, j, 0]
             pt = (detections[0, i, j, 1:] * scale).cpu().numpy().astype(int)
-            #left_up, right_bottom = (pt[0], pt[1]), (pt[2], pt[3])
+            now_bbox.append(pt)
             j += 1
-            #cv2.rectangle(img, left_up, right_bottom, (0, 0, 255), 2)
-            #conf = "{:.2f}".format(score)
-            #text_size, baseline = cv2.getTextSize(
-            #    conf, cv2.FONT_HERSHEY_SIMPLEX, 0.3, 1)
-            #p1 = (left_up[0], left_up[1] - text_size[1])
-            #cv2.rectangle(img, (p1[0] - 2 // 2, p1[1] - 2 - baseline),
-            #              (p1[0] + text_size[0], p1[1] + text_size[1]),[255,0,0], -1)
-            #cv2.putText(img, conf, (p1[0], p1[
-            #                1] + baseline), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1, 8)
             x,y,w,h = pt[0], pt[1], pt[2]-pt[0], pt[3]-pt[1]
             mask=generate_mask(im.shape[0],im.shape[1],max(w,h)/2,x+w/2,y+h/2)
             mask_img[mask]=[0,0,0]
+
+    add_bbox = find_no_match_box(pre_bbox,now_bbox)
+    for bbox in add_bbox:
+        score = bbox[0, i, j, 0]
+        pt = bbox[0, i, j, 1:] * scale.numpy()
+        j += 1
+        x,y,w,h = pt[0], pt[1], pt[2]-pt[0], pt[3]-pt[1]
+        mask=generate_mask(im.shape[0],im.shape[1],max(w,h)/2,x+w/2,y+h/2)
+        mask_img[mask]=[0,0,0]
+    now_bbox +=add_bbox
     mask_img_verse = np.ones(img.shape,np.int8) - mask_img
     result_img = mask_img * im + mask_img_verse * blur_img
     #t2 = time.time()
     #print('detect:{} timer:{}'.format(img_path, t2 - t1))
 
     #cv2.imwrite(os.path.join(args.save_dir, os.path.basename(img_path)), result_img)
-    return result_img
+    return result_img,now_bbox
 
 
 if __name__ == '__main__':
@@ -153,12 +168,13 @@ if __name__ == '__main__':
     	timeF = args.freq
     	c = 0
     	T1 = time.time()
+        pre_bbox = []
     	while (True):
             ret,im = cap.read()
             if ret == False:
                 break
             if c%timeF == 0: 
-                img = detect(net,im,args.thresh)
+                img,pre_bbox = detect(net,im,args.thresh,pre_bbox)
                 frame = np.uint8(img)
                 out.write(frame)
             c += 1
